@@ -13,12 +13,14 @@ const state = {
 };
 
 // Загрузка данных
-async function loadData() {
-  try {
-    const data = await Telegram.WebApp.CloudStorage.getItem('timeTrackerData');
-    if (data) {
+function loadData() {
+  Telegram.WebApp.CloudStorage.getItem('timeTrackerData', (err, data) => {
+    if (err) {
+        console.error('Error loading data:', err);
+    } else {
+
       const parsed = JSON.parse(data);
-      
+    
       // Аккуратно восстанавливаем каждое поле
       state.activeTasks = parsed.activeTasks || [];
       state.inactiveTasks = parsed.inactiveTasks || [];
@@ -26,12 +28,12 @@ async function loadData() {
       state.statistics = parsed.statistics || {};
       state.incompatibleGroups = parsed.incompatibleGroups || {};
       state.lastSync = parsed.lastSync || 0;
-      
+    
       // Гарантируем что все задачи имеют ID
       state.taskTemplates.forEach(task => {
         if (!task.id) task.id = generateUUID();
       });
-      
+    
       // Инициализируем статистику для новых задач
       state.taskTemplates.forEach(task => {
         if (!state.statistics[task.id]) {
@@ -42,12 +44,9 @@ async function loadData() {
           };
         }
       });
-    }
-  } catch (e) {
-    console.error('Error loading data:', e);
-  } finally {
-    initDefaultData();
-  }
+    };
+  });
+  initDefaultData();
 }
 
 function initDefaultData() {
@@ -63,14 +62,16 @@ function initDefaultData() {
 }
 
 // Сохранение данных
-async function saveData() {
-  try {
-    state.lastSync = Date.now();
-    const data = JSON.stringify(state);
-    await Telegram.WebApp.CloudStorage.setItem('timeTrackerData', data);
-  } catch (e) {
-    console.error('Error saving data:', e);
-  }
+function saveData() {
+  state.lastSync = Date.now();
+  const data = JSON.stringify(state);
+  Telegram.WebApp.CloudStorage.setItem('timeTrackerData', data, (err, success) => {
+    if (err) {
+      console.error('Error saving data:', err);
+    } else {
+      console.log('Data saved successfully:', success);
+    }
+  });
 }
 
 
@@ -453,7 +454,7 @@ function formatTime(ms) {
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadData();
+  loadData();
   updateUI();
 
   // Добавьте этот лог после загрузки данных
