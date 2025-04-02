@@ -9,7 +9,8 @@ const state = {
   taskTemplates: [],
   incompatibleGroups: {},
   statistics: {},
-  lastSync: 0
+  lastSync: 0,
+  storageCheckInterval: 1000, // Проверка каждую 1 секунду
 };
 
 // Загрузка данных
@@ -441,7 +442,6 @@ function formatTime(ms) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
@@ -453,10 +453,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Обновление времени каждую секунду
   setInterval(() => {
     if (state.activeTasks.some(id => isTaskActive(id))) {
-      await loadData();
       updateUI();
     }
   }, 1000);
+
+  setInterval(loadData, state.storageCheckInterval);
 });
 
 
