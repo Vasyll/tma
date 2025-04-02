@@ -13,47 +13,35 @@ const state = {
 };
 
 // Загрузка данных
-function loadData() {
-  Telegram.WebApp.CloudStorage.getItem('timeTrackerData', (err, data) => {
-    if (err) {
-        console.error('Error loading data:', err);
-    } else {
-
-      const parsed = JSON.parse(data);
-      console.log('Loading data:', parsed)
-    
-      // Аккуратно восстанавливаем каждое поле
-      state.activeTasks = parsed.activeTasks || [];
-      state.inactiveTasks = parsed.inactiveTasks || [];
-      state.taskTemplates = parsed.taskTemplates || [];
-      state.statistics = parsed.statistics || {};
-      state.incompatibleGroups = parsed.incompatibleGroups || {};
-      state.lastSync = parsed.lastSync || 0;
-    
-      // Гарантируем что все задачи имеют ID
-      state.taskTemplates.forEach(task => {
-        if (!task.id) task.id = generateUUID();
-      });
-    
-      // Инициализируем статистику для новых задач
-      state.taskTemplates.forEach(task => {
-        if (!state.statistics[task.id]) {
-          state.statistics[task.id] = { 
-            totalTime: 0, 
-            sessions: [], 
-            daily: {} 
-          };
-        }
-      });
-    };
+function getCloudItem(key) {
+  return new Promise((resolve, reject) => {
+    Telegram.WebApp.CloudStorage.getItem(key, (error, value) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(value);
+      }
+    });
   });
-  initDefaultData();
+}
+
+async function loadData() {
+  try {
+    const data = await getCloudItem('timeTrackerData');
+    const parsed = JSON.parse(data);
+    console.log('Loading data:', parsed)
+    Object.assign(state, parsed);
+  } catch (error) {
+    console.error('Ошибка при получении данных:', error);
+  } finally {
+    initDefaultData();
+  }
 }
 
 function initDefaultData() {
   // Проверяем по taskTemplates вместо activeTasks/inactiveTasks
   if (state.taskTemplates.length === 0) {
-    addTaskTemplate('Ходьба2', 'movement');
+    addTaskTemplate('Ходьба', 'movement');
     addTaskTemplate('Бег', 'movement');
     addTaskTemplate('Думать');
     addTaskTemplate('Слушать подкаст');
@@ -455,7 +443,7 @@ function formatTime(ms) {
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
-  loadData();
+  await loadData();
   updateUI();
 
   // Добавьте этот лог после загрузки данных
