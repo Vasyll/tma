@@ -20,6 +20,7 @@ function loadData() {
     } else {
 
       const parsed = JSON.parse(data);
+      console.log('Loading data:', parsed)
     
       // Аккуратно восстанавливаем каждое поле
       state.activeTasks = parsed.activeTasks || [];
