@@ -452,9 +452,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Обновление времени каждую секунду
   setInterval(() => {
-    if (state.activeTasks.some(id => isTaskActive(id))) {
+    // if (state.activeTasks.some(id => isTaskActive(id))) {
       updateUI();
-    }
+    // }
   }, 1000);
 
   setInterval(loadData, state.storageCheckInterval);
