@@ -451,11 +451,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('Initial state:', JSON.parse(JSON.stringify(state)));
   
   // Обновление времени каждую секунду
-  setInterval(() => {
-    // if (state.activeTasks.some(id => isTaskActive(id))) {
-      updateUI();
-    // }
-  }, 1000);
+
+  //setInterval(() => {
+  //  if (state.activeTasks.some(id => isTaskActive(id))) {
+  //    updateUI();
+  //  }
+  //}, 1000);
+  setInterval(updateUI, 1000)
 
   setInterval(loadData, state.storageCheckInterval);
 });
