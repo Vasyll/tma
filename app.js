@@ -441,6 +441,7 @@ function formatTime(ms) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
@@ -452,6 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Обновление времени каждую секунду
   setInterval(() => {
     if (state.activeTasks.some(id => isTaskActive(id))) {
+      await loadData();
       updateUI();
     }
   }, 1000);
