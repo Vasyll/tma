@@ -53,7 +53,7 @@ function loadData() {
 function initDefaultData() {
   // Проверяем по taskTemplates вместо activeTasks/inactiveTasks
   if (state.taskTemplates.length === 0) {
-    addTaskTemplate('Ходьба1', 'movement');
+    addTaskTemplate('Ходьба2', 'movement');
     addTaskTemplate('Бег', 'movement');
     addTaskTemplate('Думать');
     addTaskTemplate('Слушать подкаст');
