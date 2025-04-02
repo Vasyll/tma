@@ -10,7 +10,7 @@ const state = {
   incompatibleGroups: {},
   statistics: {},
   lastSync: 0,
-  storageCheckInterval: 1000, // Проверка каждую 1 секунду
+  storageCheckInterval: 1000 // Проверка каждую 1 секунду
 };
 
 // Загрузка данных
