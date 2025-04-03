@@ -325,6 +325,7 @@ function updateUI() {
               <div class="task-actions">
                 <button onclick="activateTask('${id}')">➕</button>
                 <button onclick="showTaskStats('${id}')">📊</button>
+                <button onclick="showDeleteConfirm('${id}')" class="delete-btn">🗑️</button>
               </div>
             </li>`;
           }).join('')}
@@ -414,6 +415,59 @@ function handleAddTask() {
   addTaskTemplate(name, group);
   closeModal();
   updateUI();
+}
+
+// Удаление задачи (только для неактивных)
+function deleteTask(taskId) {
+  // Проверяем, что задача неактивна
+  if (state.activeTasks.includes(taskId)) {
+    console.warn('Нельзя удалить активную задачу');
+    return;
+  }
+
+  // Удаляем из всех коллекций
+  state.inactiveTasks = state.inactiveTasks.filter(id => id !== taskId);
+  state.taskTemplates = state.taskTemplates.filter(task => task.id !== taskId);
+  
+  // Удаляем статистику (опционально)
+  // if (state.statistics[taskId]) {
+  //   delete state.statistics[taskId];
+  // }
+
+  if (state.statistics[taskId]?.totalTime > 0) {
+    showConfirmationDialog(
+      `Задача "${task.name}" имеет историю (${formatTime(state.statistics[taskId].totalTime)}). 
+       Удалить вместе с историей?`,
+      () => actuallyDeleteTask(taskId)
+    );
+  } else {
+    actuallyDeleteTask(taskId);
+  }
+
+  // Удаляем из групп несовместимости (если используется)
+  for (const group in state.incompatibleGroups) {
+    state.incompatibleGroups[group] = 
+      state.incompatibleGroups[group].filter(id => id !== taskId);
+  }
+  
+  saveData();
+  updateUI();
+}
+
+function actuallyDeleteTask(taskId) {
+  if (state.statistics[taskId]) {
+    delete state.statistics[taskId];
+  }
+}
+
+function showDeleteConfirm(taskId) {
+  const task = getTaskById(taskId);
+  if (!task) return;
+
+  showConfirmationDialog(
+    `Удалить задачу "${task.name}"? Это действие нельзя отменить.`,
+    () => deleteTask(taskId)
+  );
 }
 
 function showExportDialog() {
