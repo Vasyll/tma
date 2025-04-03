@@ -266,6 +266,12 @@ function exportData() {
 function updateUI() {
   const app = document.getElementById('app');
   if (!app) return;
+
+  // Проверяем, открыто ли модальное окно
+  const modal = document.getElementById('modal');
+  if (modal && !modal.classList.contains('hidden')) {
+    return; // Не обновляем UI, если модальное окно видимо
+  }
   
   app.innerHTML = `
     <div class="header">
