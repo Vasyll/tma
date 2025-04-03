@@ -429,20 +429,20 @@ function deleteTask(taskId) {
   state.inactiveTasks = state.inactiveTasks.filter(id => id !== taskId);
   state.taskTemplates = state.taskTemplates.filter(task => task.id !== taskId);
   
-  // Удаляем статистику (опционально)
-  // if (state.statistics[taskId]) {
-  //   delete state.statistics[taskId];
-  // }
-
-  if (state.statistics[taskId]?.totalTime > 0) {
-    showConfirmationDialog(
-      `Задача "${task.name}" имеет историю (${formatTime(state.statistics[taskId].totalTime)}). 
-       Удалить вместе с историей?`,
-      () => actuallyDeleteTask(taskId)
-    );
-  } else {
-    actuallyDeleteTask(taskId);
+  // Удаляем статистику
+  if (state.statistics[taskId]) {
+    delete state.statistics[taskId];
   }
+
+  // if (state.statistics[taskId]?.totalTime > 0) {
+  //   showConfirmationDialog(
+  //     `Задача "${task.name}" имеет историю (${formatTime(state.statistics[taskId].totalTime)}). 
+  //      Удалить вместе с историей?`,
+  //     () => actuallyDeleteTask(taskId)
+  //   );
+  // } else {
+  //   actuallyDeleteTask(taskId);
+  // }
 
   // Удаляем из групп несовместимости (если используется)
   for (const group in state.incompatibleGroups) {
@@ -454,11 +454,11 @@ function deleteTask(taskId) {
   updateUI();
 }
 
-function actuallyDeleteTask(taskId) {
-  if (state.statistics[taskId]) {
-    delete state.statistics[taskId];
-  }
-}
+// function actuallyDeleteTask(taskId) {
+//   if (state.statistics[taskId]) {
+//     delete state.statistics[taskId];
+//   }
+// }
 
 function showDeleteConfirm(taskId) {
   const task = getTaskById(taskId);
