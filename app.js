@@ -275,7 +275,7 @@ function updateUI() {
   
   app.innerHTML = `
     <div class="header">
-      <h1>⏱️ Учет времени</h1>
+      <h1>⏱️ Учет времени 1</h1>
       <div class="active-timers">
         ${state.activeTasks.filter(id => isTaskActive(id)).length > 0 ? `
           <h3>⏳ Сейчас активно:</h3>
