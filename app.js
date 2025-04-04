@@ -198,6 +198,12 @@ function isTaskActive(taskId) {
   return stats && stats.sessions && stats.sessions.some(s => s && s.end === null);
 }
 
+function getTodayTime(stats) {
+  if (!stats || !stats.daily) return 0;
+  const todayKey = getDateKey(new Date());
+  return stats.daily[todayKey] || 0;
+}
+
 // Статистика
 function getDateKey(date) {
   return date.toISOString().split('T')[0];
@@ -304,9 +310,10 @@ function updateUI() {
             const task = getTaskById(id);
             const stats = state.statistics[id] || { totalTime: 0, sessions: [], daily: {} };
             const isActive = isTaskActive(id);
+            const todayTime = getTodayTime(stats);
             
             return `<li class="${isActive ? 'active' : ''}">
-              <span>${task.name} - ${formatTime(stats.totalTime)}</span>
+              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime)})</span>
               <div class="task-actions">
                 ${isActive 
                   ? `<button onclick="stopTask('${id}')">⏹️</button>`
@@ -325,9 +332,10 @@ function updateUI() {
           ${state.inactiveTasks.map(id => {
             const task = getTaskById(id);
             const stats = state.statistics[id] || { totalTime: 0, sessions: [], daily: {} };
+            const todayTime = getTodayTime(stats);
             
             return `<li>
-              <span>${task.name} - ${formatTime(stats.totalTime)}</span>
+              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime)})</span>
               <div class="task-actions">
                 <button onclick="activateTask('${id}')">➕</button>
                 <button onclick="showTaskStats('${id}')">📊</button>
