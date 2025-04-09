@@ -155,17 +155,12 @@ function startTask(taskId) {
 
 function actuallyStartTask(taskId) {
   if (!state.statistics[taskId]) {
-    state.statistics[taskId] = { totalTime: 0, sessions: [], daily: {} };
+    state.statistics[taskId] = { daily: {} };
   }
   
-  state.statistics[taskId].sessions.push({
-    start: Date.now(),
-    end: null
-  });
-  
-  if (!state.activeTasks.includes(taskId)) {
-    state.activeTasks.push(taskId);
-  }
+  // Запоминаем только время старта (не сохраняем сессию)
+  state.activeTasks.push(taskId);
+  state.statistics[taskId].currentStart = Date.now();
   
   saveData();
   updateUI();
@@ -173,33 +168,51 @@ function actuallyStartTask(taskId) {
 
 function stopTask(taskId) {
   const stats = state.statistics[taskId];
-  if (!stats) return;
+  if (!stats || !stats.currentStart) return;
   
-  const lastSession = stats.sessions.find(s => s.end === null);
-  if (lastSession) {
-    lastSession.end = Date.now();
-    const duration = lastSession.end - lastSession.start;
-    stats.totalTime += duration;
-    
-    // Обновляем дневную статистику
-    const dateKey = getDateKey(new Date());
-    if (!stats.daily[dateKey]) {
-      stats.daily[dateKey] = 0;
-    }
-    stats.daily[dateKey] += duration;
+  const duration = Date.now() - stats.currentStart;
+  const dateKey = getDateKey(new Date());
+  
+  // Обновляем daily статистику
+  if (!stats.daily[dateKey]) {
+    stats.daily[dateKey] = 0;
   }
+  stats.daily[dateKey] += duration;
+  
+  // Очищаем текущую сессию
+  delete stats.currentStart;
+  
+  // Очищаем старые данные (оставляем 7 дней)
+  cleanupOldStats(taskId);
   
   saveData();
   updateUI();
 }
 
+function cleanupOldStats(taskId) {
+  const stats = state.statistics[taskId];
+  if (!stats?.daily) return;
+  
+  const now = new Date();
+  const daysToKeep = 7;
+  
+  Object.keys(stats.daily).forEach(date => {
+    const dateObj = new Date(date);
+    const diffDays = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > daysToKeep) {
+      delete stats.daily[date];
+    }
+  });
+}
+
 function isTaskActive(taskId) {
   const stats = state.statistics[taskId];
-  return stats && stats.sessions && stats.sessions.some(s => s && s.end === null);
+  return stats && stats.currentStart !== undefined;
 }
 
 function getTodayTime(stats) {
-  if (!stats || !stats.daily) return 0;
+  if (!stats?.daily) return 0;
   const todayKey = getDateKey(new Date());
   return stats.daily[todayKey] || 0;
 }
@@ -252,7 +265,12 @@ function showPopup(title, message, buttons = []) {
 function exportData() {
   const data = {
     tasks: state.taskTemplates,
-    statistics: state.statistics,
+    statistics: Object.fromEntries(
+      Object.entries(state.statistics).map(([id, stats]) => [
+        id, 
+        { daily: stats.daily } // Экспортируем только daily данные
+      ]
+    ),
     exportedAt: new Date().toISOString()
   };
   
@@ -266,6 +284,12 @@ function exportData() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function getCurrentTaskTime(taskId) {
+  const stats = state.statistics[taskId];
+  if (!stats?.currentStart) return 0;
+  return Date.now() - stats.currentStart;
 }
 
 // Обновление интерфейса
@@ -288,12 +312,11 @@ function updateUI() {
           <ul>
             ${state.activeTasks.filter(id => isTaskActive(id)).map(id => {
               const task = getTaskById(id);
-              const stats = state.statistics[id] || { totalTime: 0, sessions: [], daily: {} };
-              const activeSession = stats.sessions.find(s => s.end === null);
-              const duration = activeSession ? Date.now() - activeSession.start : 0;
+              const todayTime = getTodayTime(state.statistics[id]);
+              const currentTime = getCurrentTaskTime(id);
               
               return `<li>
-                <span>${task.name} (${formatTime(duration)})</span>
+                <span>${task.name} (${formatTime(todayTime + currentTime)} сегодня</span>
                 <button onclick="stopTask('${id}')">⏹️</button>
               </li>`;
             }).join('')}
@@ -349,11 +372,17 @@ function updateUI() {
     
     <div class="controls">
       <button onclick="showAddTaskDialog()">➕ Создать задание</button>
-      <button onclick="showExportDialog()">📤 Экспорт данных</button>
     </div>
     
     <div id="modal" class="modal hidden"></div>
   `;
+
+// Убрал экспорт данных, он нихрена не работает нигде, только запущенный локально
+//    <div class="controls">
+//      <button onclick="showAddTaskDialog()">➕ Создать задание</button>
+//      <button onclick="showExportDialog()">📤 Экспорт данных</button>
+//    </div>
+
 }
 
 // Модальные окна
