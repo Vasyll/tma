@@ -271,7 +271,7 @@ function exportData() {
         id, 
         { daily: stats.daily } // Экспортируем только daily данные
       ]
-    ),
+    )),
     exportedAt: new Date().toISOString()
   };
   
