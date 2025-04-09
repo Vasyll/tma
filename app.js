@@ -29,9 +29,11 @@ function getCloudItem(key) {
 async function loadData() {
   try {
     const data = await getCloudItem('timeTrackerData');
-    const parsed = JSON.parse(data);
-    console.log('Loading data:', parsed)
-    Object.assign(state, parsed);
+    if (data) {
+      const parsed = JSON.parse(data);
+      console.log('Loading data:', parsed);
+      Object.assign(state, parsed);
+    }
   } catch (error) {
     console.error('Ошибка при получении данных:', error);
   } finally {
@@ -53,7 +55,7 @@ function initDefaultData() {
 
 // Сохранение данных
 function saveData() {
-  state.lastSync = Date.now();
+  state.lastSync = Math.floor(Date.now() / 1000); // Сохраняем время в секундах
   const data = JSON.stringify(state);
   Telegram.WebApp.CloudStorage.setItem('timeTrackerData', data, (err, success) => {
     if (err) {
@@ -64,7 +66,6 @@ function saveData() {
   });
 }
 
-
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
@@ -73,14 +74,13 @@ function generateUUID() {
   });
 }
 
-
 // Шаблоны заданий
 function addTaskTemplate(name, incompatibleGroup = null) {
   const newTask = {
     id: generateUUID(), // Уникальный ID
     name,
     incompatibleGroup,
-    createdAt: Date.now()
+    createdAt: Math.floor(Date.now() / 1000) // Сохраняем время в секундах
   };
   state.taskTemplates.push(newTask);
   state.inactiveTasks.push(newTask.id);
@@ -158,9 +158,9 @@ function actuallyStartTask(taskId) {
     state.statistics[taskId] = { daily: {} };
   }
   
-  // Запоминаем только время старта (не сохраняем сессию)
+  // Запоминаем время старта в секундах
   state.activeTasks.push(taskId);
-  state.statistics[taskId].currentStart = Date.now();
+  state.statistics[taskId].currentStart = Math.floor(Date.now() / 1000);
   
   saveData();
   updateUI();
@@ -170,7 +170,8 @@ function stopTask(taskId) {
   const stats = state.statistics[taskId];
   if (!stats || !stats.currentStart) return;
   
-  const duration = Date.now() - stats.currentStart;
+  const currentTime = Math.floor(Date.now() / 1000);
+  const duration = currentTime - stats.currentStart;
   const dateKey = getDateKey(new Date());
   
   // Обновляем daily статистику
@@ -214,7 +215,7 @@ function isTaskActive(taskId) {
 function getTodayTime(stats) {
   if (!stats?.daily) return 0;
   const todayKey = getDateKey(new Date());
-  return stats.daily[todayKey] || 0;
+  return (stats.daily[todayKey] || 0) * 1000; // Конвертируем секунды в миллисекунды для отображения
 }
 
 // Статистика
@@ -289,7 +290,8 @@ function exportData() {
 function getCurrentTaskTime(taskId) {
   const stats = state.statistics[taskId];
   if (!stats?.currentStart) return 0;
-  return Date.now() - stats.currentStart;
+  const currentTime = Math.floor(Date.now() / 1000);
+  return (currentTime - stats.currentStart) * 1000; // Конвертируем секунды в миллисекунды для отображения
 }
 
 // Обновление интерфейса
@@ -336,7 +338,7 @@ function updateUI() {
             const todayTime = getTodayTime(stats);
             
             return `<li class="${isActive ? 'active' : ''}">
-              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime)})</span>
+              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
               <div class="task-actions">
                 ${isActive 
                   ? `<button onclick="stopTask('${id}')">⏹️</button>`
@@ -358,7 +360,7 @@ function updateUI() {
             const todayTime = getTodayTime(stats);
             
             return `<li>
-              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime)})</span>
+              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
               <div class="task-actions">
                 <button onclick="activateTask('${id}')">➕</button>
                 <button onclick="showTaskStats('${id}')">📊</button>
@@ -395,13 +397,13 @@ function showTaskStats(taskId) {
   modal.innerHTML = `
     <div class="modal-content">
       <h2>📊 ${task.name}</h2>
-      <p>Общее время: ${formatTime(stats.totalTime)}</p>
+      <p>Общее время: ${formatTime(stats.totalTime * 1000)}</p>
       
       <div class="stats-section">
         <h3>📅 По дням:</h3>
         <ul>
           ${Object.entries(stats.daily).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 10).map(([date, time]) => `
-            <li>${date}: ${formatTime(time)}</li>
+            <li>${date}: ${formatTime(time * 1000)}</li>
           `).join('')}
         </ul>
       </div>
@@ -410,7 +412,7 @@ function showTaskStats(taskId) {
         <h3>🗓️ По неделям:</h3>
         <ul>
           ${Object.entries(weeklyStats).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5).map(([week, time]) => `
-            <li>Неделя с ${week}: ${formatTime(time)}</li>
+            <li>Неделя с ${week}: ${formatTime(time * 1000)}</li>
           `).join('')}
         </ul>
       </div>
@@ -544,10 +546,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
   updateUI();
 
-  // Добавьте этот лог после загрузки данных
   console.log('Initial state:', JSON.parse(JSON.stringify(state)));
   
-  // Обновление времени каждую секунду
+  // Обновление интерфейса каждую секунду
 
   //setInterval(() => {
   //  if (state.activeTasks.some(id => isTaskActive(id))) {
@@ -556,9 +557,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   //}, 1000);
   setInterval(updateUI, 1000)
 
+  // Проверка синхронизации с хранилищем
   setInterval(loadData, state.storageCheckInterval);
 });
-
 
 // Глобальные функции
 window.startTask = startTask;
