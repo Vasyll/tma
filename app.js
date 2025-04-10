@@ -159,7 +159,6 @@ function actuallyStartTask(taskId) {
   }
   
   // Запоминаем время старта в секундах
-  state.activeTasks.push(taskId);
   state.statistics[taskId].currentStart = Math.floor(Date.now() / 1000);
   
   saveData();
@@ -314,11 +313,10 @@ function updateUI() {
           <ul>
             ${state.activeTasks.filter(id => isTaskActive(id)).map(id => {
               const task = getTaskById(id);
-              const todayTime = getTodayTime(state.statistics[id]);
               const currentTime = getCurrentTaskTime(id);
               
               return `<li>
-                <span>${task.name} (${formatTime(todayTime + currentTime)} сегодня</span>
+                <span>${task.name} — ${formatTime(currentTime)}</span>
                 <button onclick="stopTask('${id}')">⏹️</button>
               </li>`;
             }).join('')}
@@ -338,7 +336,7 @@ function updateUI() {
             const todayTime = getTodayTime(stats);
             
             return `<li class="${isActive ? 'active' : ''}">
-              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
+              <span>${task.name} — ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
               <div class="task-actions">
                 ${isActive 
                   ? `<button onclick="stopTask('${id}')">⏹️</button>`
@@ -360,7 +358,7 @@ function updateUI() {
             const todayTime = getTodayTime(stats);
             
             return `<li>
-              <span>${task.name} - ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
+              <span>${task.name} — ${formatTime(todayTime)} (${formatTime(stats.totalTime * 1000)})</span>
               <div class="task-actions">
                 <button onclick="activateTask('${id}')">➕</button>
                 <button onclick="showTaskStats('${id}')">📊</button>
