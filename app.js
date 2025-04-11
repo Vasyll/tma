@@ -113,6 +113,7 @@ function deactivateTask(taskId) {
   if (!state.activeTasks.includes(taskId)) return;
   
   // Остановить задание если оно активно
+  // TODO зачем эта проверка?
   if (isTaskActive(taskId)) {
     stopTask(taskId);
   }
@@ -188,6 +189,20 @@ function stopTask(taskId) {
   saveData();
   updateUI();
 }
+
+function stopTaskRedistribution(taskId) {
+  if (!state.activeTasks.includes(taskId)) return;
+  
+  const stats = state.statistics[taskId];
+  if (!stats || !stats.currentStart) return;
+  
+  const currentTime = Math.floor(Date.now() / 1000);
+  const duration = currentTime - stats.currentStart;
+  
+  // Показываем диалог перераспределения вместо непосредственной остановки
+  showTimeRedistributionDialog(taskId, duration);
+}
+
 
 function cleanupOldStats(taskId) {
   const stats = state.statistics[taskId];
@@ -318,6 +333,7 @@ function updateUI() {
               return `<li>
                 <span>${task.name} — ${formatTime(currentTime)}</span>
                 <button onclick="stopTask('${id}')">⏹️</button>
+                <button onclick="stopTaskRedistribution('${id}')">⏹️🌗</button>
               </li>`;
             }).join('')}
           </ul>
@@ -406,14 +422,14 @@ function showTaskStats(taskId) {
         </ul>
       </div>
       
-      <div class="stats-section">
-        <h3>🗓️ По неделям:</h3>
-        <ul>
-          ${Object.entries(weeklyStats).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5).map(([week, time]) => `
-            <li>Неделя с ${week}: ${formatTime(time * 1000)}</li>
-          `).join('')}
-        </ul>
-      </div>
+//      <div class="stats-section">
+//        <h3>🗓️ По неделям:</h3>
+//        <ul>
+//          ${Object.entries(weeklyStats).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5).map(([week, time]) => `
+//            <li>Неделя с ${week}: ${formatTime(time * 1000)}</li>
+//          `).join('')}
+//        </ul>
+//      </div>
       
       <button onclick="closeModal()">Закрыть</button>
     </div>
@@ -559,6 +575,80 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(loadData, state.storageCheckInterval);
 });
 
+function showTimeRedistributionDialog(taskId, totalDuration) {
+  const activeTasks = state.activeTasks.filter(id => id !== taskId && !isTaskActive(id));
+  
+  const modal = document.getElementById('modal');
+  modal.innerHTML = `
+    <div class="modal-content">
+      <h2>⏱️ Перераспределение времени</h2>
+      <p>Зафиксировано времени: ${formatTime(totalDuration * 1000)}</p>
+      
+      <div class="time-control">
+        <label>Оставить для "${getTaskById(taskId).name}":</label>
+        <input type="range" id="timeSlider" min="0" max="${totalDuration}" value="${totalDuration}" 
+               oninput="updateTimeDisplay(this.value, ${totalDuration})">
+        <span id="timeDisplay">${formatTime(totalDuration * 1000)}</span>
+      </div>
+      
+      ${activeTasks.length > 0 ? `
+      <div class="recipient-select">
+        <label>Передать оставшееся время заданию:</label>
+        <select id="recipientTask">
+          ${activeTasks.map(id => `
+            <option value="${id}">${getTaskById(id).name}</option>
+          `).join('')}
+        </select>
+      </div>
+      ` : '<p>Нет других активных заданий для передачи времени</p>'}
+      
+      <button onclick="applyTimeRedistribution('${taskId}', ${totalDuration})">Применить</button>
+      <button onclick="closeModal()">Отмена</button>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+}
+
+function updateTimeDisplay(value, total) {
+  document.getElementById('timeDisplay').textContent = formatTime(value * 1000);
+}
+
+function applyTimeRedistribution(taskId, totalDuration) {
+  const keepTime = parseInt(document.getElementById('timeSlider').value);
+  const recipientId = document.getElementById('recipientTask')?.value;
+  
+  // Обновляем статистику для текущей задачи
+  const dateKey = getDateKey(new Date());
+  const stats = state.statistics[taskId];
+  
+  if (!stats.daily[dateKey]) {
+    stats.daily[dateKey] = 0;
+  }
+  stats.daily[dateKey] += keepTime;
+  
+  // Если есть получатель и есть время для передачи
+  if (recipientId && keepTime < totalDuration) {
+    const transferTime = totalDuration - keepTime;
+    const recipientStats = state.statistics[recipientId] || { daily: {} };
+    
+    if (!recipientStats.daily[dateKey]) {
+      recipientStats.daily[dateKey] = 0;
+    }
+    recipientStats.daily[dateKey] += transferTime;
+    
+    if (!state.statistics[recipientId]) {
+      state.statistics[recipientId] = recipientStats;
+    }
+  }
+  
+  delete stats.currentStart;
+  cleanupOldStats(taskId);
+  
+  saveData();
+  updateUI();
+  closeModal();
+}
+
 // Глобальные функции
 window.startTask = startTask;
 window.stopTask = stopTask;
@@ -568,3 +658,5 @@ window.showTaskStats = showTaskStats;
 window.showAddTaskDialog = showAddTaskDialog;
 window.showExportDialog = showExportDialog;
 window.closeModal = closeModal;
+window.updateTimeDisplay = updateTimeDisplay;
+window.applyTimeRedistribution = applyTimeRedistribution;
